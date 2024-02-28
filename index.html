@@ -35,14 +35,14 @@ function playChordAndBass(time) {
   
   // Check if two cycles of bass notes have been completed to start melody
   if (state.cycles === 2 && state.step % state.notes.length === 0) {
-    Tone.Transport.scheduleRepeat(playMelody, '4n', time); // Schedule melody with its own repeat
+    Tone.Transport.scheduleRepeat(playMelody, '8n', time); // Schedule melody with its own repeat
   }
 }
 
 function playMelody(time) {
   if(state.melodyStep < state.melody.length) { // Check if there are more melody notes to play
     const note = state.melody[state.melodyStep++];
-    melodySynth.triggerAttackRelease(note, '64n', time);
+    melodySynth.triggerAttackRelease(note, '16n', time);
   } else {
     Tone.Transport.clear(playMelody); // Stop the melody once all notes have been played
   }
