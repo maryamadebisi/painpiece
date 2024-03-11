@@ -1,32 +1,42 @@
-<script src="https://cdn.jsdelivr.net/gh/netizenorg/netnet-standard-library/build/nn.min.js"></script>
-<script src="https://tonejs.github.io/build/Tone.js"></script>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Music with Image Display</title>
+    <script src="https://cdn.jsdelivr.net/gh/netizenorg/netnet-standard-library/build/nn.min.js"></script>
+    <script src="https://tonejs.github.io/build/Tone.js"></script>
+</head>
+<body>
+
 <button id="startBtn">start</button>
+
+<img id="graveofthefireflies" src="https://i.pinimg.com/736x/f8/9b/27/f89b275d873e6ad6572893487ed8d2f9.jpg" style="display: none; width: 100vw; height: 100vw;">
+
 <script>
   /* global nn, Tone */
 
-  const state = {
+  const state = {    
     step: 0,
     melodyStep: 0,
-    cycles: 0, // Added to track the cycles of bass notes and chords
+    cycles: 0,
     notes: ['G2', ['B3', 'F#4', 'D4'], 'D2', ['A3', 'C#4', 'F#4']],
-    melody: ['F#5', 'C#5', 'C#5', 'C#5', 'C#5', 'C#5', 'B4', 'C#5', 'B4'], // Adjusted for demonstration
+    melody: ['F#5', 'C#5', 'C#5', 'C#5', 'C#5', 'C#5', 'B4', 'C#5', 'B4'],
     melody2: ['A4', 'A4', 'E5', 'F#5', 'E5', 'D5', 'A4'],
     melody3: ['A3', 'F#3', 'F#3', 'F#3', 'F#3', 'E3', 'C#3', 'A4']
   };
 
-  const synth = new Tone.PolySynth(Tone.Synth).toDestination(); // Use PolySynth for chords
+  const synth = new Tone.PolySynth(Tone.Synth).toDestination();
   synth.set({ oscillator: { type: 'sine' } });
 
-  const melodySynth = new Tone.Synth().toDestination(); // Separate synth for melody
+  const melodySynth = new Tone.Synth().toDestination();
   melodySynth.oscillator.type = 'sine';
 
   function playChordAndBass(time) {
     const current = state.notes[state.step % state.notes.length];
     
     if (Array.isArray(current)) {
-      synth.triggerAttackRelease(current, '2n', time); // Chords
+      synth.triggerAttackRelease(current, '2n', time);
     } else {
-      synth.triggerAttackRelease(current, '2n', time); // Bass notes
+      synth.triggerAttackRelease(current, '2n', time);
     }
     
     state.step++;
@@ -35,55 +45,51 @@
     }
     
     if (state.cycles === 2 && state.step % state.notes.length === 0) {
-      // Introduce a pause before starting the melody
       Tone.Transport.scheduleOnce(function(time) {
-        // Start playing the melody
         playMelody(time);
-      }, "+1.5"); // Start after a 1.5-second pause
+      }, "+1.5");
     }
   }
 
- function playMelody(time, repeat = true) {
-  let totalDuration = 0; // Initialize total duration
+  function playMelody(time, repeat = true) {
+    let totalDuration = 0;
 
-  // Play melody1
-  state.melody.forEach((note, index) => {
-    let noteDuration = (index === 7 || index === 8) ? '32n' : '16n';
-    let timeOffset = index * Tone.Time('8n').toSeconds();
-    if (index >= 7) timeOffset -= Tone.Time('8n').toSeconds() * 0.5; // Adjust for slurring
-    melodySynth.triggerAttackRelease(note, noteDuration, time + timeOffset);
-    totalDuration = Math.max(totalDuration, timeOffset + Tone.Time(noteDuration).toSeconds());
-  });
+    state.melody.forEach((note, index) => {
+      let noteDuration = (index === 7 || index === 8) ? '32n' : '16n';
+      let timeOffset = index * Tone.Time('8n').toSeconds();
+      if (index >= 7) timeOffset -= Tone.Time('8n').toSeconds() * 0.5;
+      melodySynth.triggerAttackRelease(note, noteDuration, time + timeOffset);
+      totalDuration = Math.max(totalDuration, timeOffset + Tone.Time(noteDuration).toSeconds());
+    });
 
-  // Calculate start time for melody2 immediately after melody1 ends
-  let melody2StartTime = totalDuration;
+    let melody2StartTime = totalDuration;
 
-  // Play melody2
-  state.melody2.forEach((note, index) => {
-    let noteDuration = (index >= state.melody2.length - 2) ? '32n' : '16n';
-    let timeOffset = index * Tone.Time('8n').toSeconds();
-    if (index >= state.melody2.length - 2) timeOffset -= Tone.Time('8n').toSeconds() * 0.5; // Adjust for slurring
-    melodySynth.triggerAttackRelease(note, noteDuration, time + melody2StartTime + timeOffset);
-    totalDuration = melody2StartTime + timeOffset + Tone.Time(noteDuration).toSeconds();
-  });
+    state.melody2.forEach((note, index) => {
+      let noteDuration = (index >= state.melody2.length - 2) ? '32n' : '16n';
+      let timeOffset = index * Tone.Time('8n').toSeconds();
+      if (index >= state.melody2.length - 2) timeOffset -= Tone.Time('8n').toSeconds() * 0.5;
+      melodySynth.triggerAttackRelease(note, noteDuration, time + melody2StartTime + timeOffset);
+      totalDuration = melody2StartTime + timeOffset + Tone.Time(noteDuration).toSeconds();
+    });
 
-  // Schedule next playthrough immediately after melody2 ends, if repeating
-  if (repeat) {
-    let nextStartTime = time + totalDuration - 1; // Start immediately after last note of melody2
-    Tone.Transport.scheduleOnce(function(nextTime) {
-      playMelody(nextTime, false); // Prevent infinite loop or manage differently
-    }, nextStartTime);
+    if (repeat) {
+      let nextStartTime = time + totalDuration - 1; 
+      Tone.Transport.scheduleOnce(function(nextTime) {
+        playMelody(nextTime, false); 
+      }, nextStartTime);
+    }
   }
-}
-
 
   function toggle() {
+    let imageElement = document.getElementById('graveofthefireflies');
     if (Tone.Transport.state === 'started') {
       Tone.Transport.stop();
       document.getElementById('startBtn').innerText = 'start';
+      imageElement.style.display = 'none';
     } else {
       Tone.Transport.start();
       document.getElementById('startBtn').innerText = 'stop';
+      imageElement.style.display = 'block';
     }
   }
 
@@ -102,3 +108,5 @@
   window.addEventListener('load', setup);
 </script>
 
+</body>
+</html>
