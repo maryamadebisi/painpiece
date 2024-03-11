@@ -2,73 +2,103 @@
 <script src="https://tonejs.github.io/build/Tone.js"></script>
 <button id="startBtn">start</button>
 <script>
-/* global nn, Tone */
+  /* global nn, Tone */
 
-const state = {
-  step: 0,
-  melodyStep: 0,
-  cycles: 0, // Added to track the cycles of bass notes and chords
-  notes: ['G2', ['B3', 'F#4', 'D4'], 'D2', ['A3', 'C#4', 'F#4']],
-  melody: ['F#5', 'C#5', 'C#5', 'C#5', 'C#5', 'C#5', 'B4', 'C#5', 'B4'], // Example melody notes
-};
+  const state = {
+    step: 0,
+    melodyStep: 0,
+    cycles: 0, // Added to track the cycles of bass notes and chords
+    notes: ['G2', ['B3', 'F#4', 'D4'], 'D2', ['A3', 'C#4', 'F#4']],
+    melody: ['F#5', 'C#5', 'C#5', 'C#5', 'C#5', 'C#5', 'B4', 'C#5', 'B4'], // Adjusted for demonstration
+    melody2: ['A4', 'A4', 'E5', 'F#5', 'E5', 'D5', 'A4'],
+    melody3: ['A3', 'F#3', 'F#3', 'F#3', 'F#3', 'E3', 'C#3', 'A4']
+  };
 
-const synth = new Tone.PolySynth(Tone.Synth).toDestination(); // Use PolySynth for chords
-synth.set({ oscillator: { type: 'sine' }});
+  const synth = new Tone.PolySynth(Tone.Synth).toDestination(); // Use PolySynth for chords
+  synth.set({ oscillator: { type: 'sine' } });
 
-const melodySynth = new Tone.Synth().toDestination(); // Separate synth for melody
-melodySynth.oscillator.type = 'sine';
+  const melodySynth = new Tone.Synth().toDestination(); // Separate synth for melody
+  melodySynth.oscillator.type = 'sine';
 
-function playChordAndBass(time) {
-  const current = state.notes[state.step % state.notes.length];
-  
-  if (Array.isArray(current)) {
-    synth.triggerAttackRelease(current, '2n', time);
-  } else {
-    synth.triggerAttackRelease(current, '2n', time);
+  function playChordAndBass(time) {
+    const current = state.notes[state.step % state.notes.length];
+    
+    if (Array.isArray(current)) {
+      synth.triggerAttackRelease(current, '2n', time); // Chords
+    } else {
+      synth.triggerAttackRelease(current, '2n', time); // Bass notes
+    }
+    
+    state.step++;
+    if (state.step % state.notes.length === 0) {
+      state.cycles++;
+    }
+    
+    if (state.cycles === 2 && state.step % state.notes.length === 0) {
+      // Introduce a pause before starting the melody
+      Tone.Transport.scheduleOnce(function(time) {
+        // Start playing the melody
+        playMelody(time);
+      }, "+1.5"); // Start after a 1.5-second pause
+    }
   }
-  
-  // Increment step and check if we've completed a cycle through the notes
-  state.step++;
-  if (state.step % state.notes.length === 0) {
-    state.cycles++; // Increment cycles after each complete pass through the notes
-  }
-  
-  // Check if two cycles of bass notes have been completed to start melody
-  if (state.cycles === 2 && state.step % state.notes.length === 0) {
-    Tone.Transport.scheduleRepeat(playMelody, '8n', time); // Schedule melody with its own repeat
+
+ function playMelody(time, repeat = true) {
+  let totalDuration = 0; // Initialize total duration
+
+  // Play melody1
+  state.melody.forEach((note, index) => {
+    let noteDuration = (index === 7 || index === 8) ? '32n' : '16n';
+    let timeOffset = index * Tone.Time('8n').toSeconds();
+    if (index >= 7) timeOffset -= Tone.Time('8n').toSeconds() * 0.5; // Adjust for slurring
+    melodySynth.triggerAttackRelease(note, noteDuration, time + timeOffset);
+    totalDuration = Math.max(totalDuration, timeOffset + Tone.Time(noteDuration).toSeconds());
+  });
+
+  // Calculate start time for melody2 immediately after melody1 ends
+  let melody2StartTime = totalDuration;
+
+  // Play melody2
+  state.melody2.forEach((note, index) => {
+    let noteDuration = (index >= state.melody2.length - 2) ? '32n' : '16n';
+    let timeOffset = index * Tone.Time('8n').toSeconds();
+    if (index >= state.melody2.length - 2) timeOffset -= Tone.Time('8n').toSeconds() * 0.5; // Adjust for slurring
+    melodySynth.triggerAttackRelease(note, noteDuration, time + melody2StartTime + timeOffset);
+    totalDuration = melody2StartTime + timeOffset + Tone.Time(noteDuration).toSeconds();
+  });
+
+  // Schedule next playthrough immediately after melody2 ends, if repeating
+  if (repeat) {
+    let nextStartTime = time + totalDuration - 1; // Start immediately after last note of melody2
+    Tone.Transport.scheduleOnce(function(nextTime) {
+      playMelody(nextTime, false); // Prevent infinite loop or manage differently
+    }, nextStartTime);
   }
 }
 
-function playMelody(time) {
-  if(state.melodyStep < state.melody.length) { // Check if there are more melody notes to play
-    const note = state.melody[state.melodyStep++];
-    melodySynth.triggerAttackRelease(note, '16n', time);
-  } else {
-    Tone.Transport.clear(playMelody); // Stop the melody once all notes have been played
+
+  function toggle() {
+    if (Tone.Transport.state === 'started') {
+      Tone.Transport.stop();
+      document.getElementById('startBtn').innerText = 'start';
+    } else {
+      Tone.Transport.start();
+      document.getElementById('startBtn').innerText = 'stop';
+    }
   }
-}
 
-function toggle() {
-  if (Tone.Transport.state === 'started') {
-    Tone.Transport.stop();
-    document.getElementById('startBtn').innerText = 'start';
-  } else {
-    Tone.Transport.start();
-    document.getElementById('startBtn').innerText = 'stop';
+  function setup() {
+    state.step = 0;
+    state.melodyStep = 0;
+    state.cycles = 0;
+    console.log('Setup complete, ready to play.');
   }
-}
 
-function setup() {
-  state.step = 0;
-  state.melodyStep = 0;
-  state.cycles = 0; // Reset cycles
-  console.log('Setup complete, ready to play.');
-}
+  document.getElementById('startBtn').addEventListener('click', toggle);
 
-document.getElementById('startBtn').addEventListener('click', toggle);
+  Tone.Transport.bpm.value = 100;
+  Tone.Transport.scheduleRepeat(playChordAndBass, '2n');
 
-Tone.Transport.bpm.value = 100;
-Tone.Transport.scheduleRepeat(playChordAndBass, '2n'); // This will play chords and bass notes
-
-window.addEventListener('load', setup);
+  window.addEventListener('load', setup);
 </script>
+
