@@ -103,7 +103,11 @@
   document.getElementById('startBtn').addEventListener('click', toggle);
 
   Tone.Transport.bpm.value = 100;
-  Tone.Transport.scheduleRepeat(playChordAndBass, '2n');
+  Tone.Transport.scheduleRepeat(playChordAndBass, '2n'); // make separate schedulers // use nn.shuffle to shuffle the arrays so with each run through it plays a different order
+  
+  //have 4 images, one with no particle and 3 variations of sparkles, and then randomly select one of the variations and then go back to original image (use setTimeout function to do this)
+  
+  //email when submitted
 
   window.addEventListener('load', setup);
 </script>
